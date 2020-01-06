@@ -1,0 +1,441 @@
+/* 
+The NHS APC Data was uploaded into the NHSData Database in the "Raw Data" table. This data is codified in accordance with rules specified in a Data Dictionary.
+In order to a) read the data more effectively and b) draw conclusions based on those readings, the code below builds reference tables in accordance with the DD that include the Descriptions alongside the IDs.
+These are then joined to the original raw data, and a query is built to draw the descriptions instead of the codes, so that the table becomes readable.
+*/
+
+use NHSData		--select database
+go
+
+--each table drop/create follows the same logic. Logic explained for first table.
+
+IF OBJECT_ID('dbo.DimEpitype') IS NOT NULL	--If the table already exists, drop table
+BEGIN										
+     DROP TABLE dbo.DimEpitype
+end
+
+select distinct	--select statement as template for new table
+epitype as ID										--column 1 (ID)
+,case												--column 2 (Description) --populates descriptions based on ID and Description in Data Dictionary
+	when epitype = 0 then 'Unknown'
+	when epitype = 1 then 'General episode'
+	when epitype = 2 then 'Delivery episode'
+	when epitype = 3 then 'Birth episode'
+	when epitype = 4 then 'Formally detained'
+	when epitype = 5 then 'Other delivery event'
+	when epitype = 6 then 'Other birth event'
+	end as [Description]
+
+	into DimEpitype	--insert into new table
+from RawData
+	order by epitype asc
+
+	--select * from DimEpitype --Test line
+
+IF OBJECT_ID('dbo.DimSex') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.DimSex
+end
+
+select distinct
+sex as ID
+,case
+	when sex = 1 then 'Male'
+	when sex = 2 then 'Female'
+	when sex = 9 then 'Not specified'
+	when sex = 0 then 'Not known'
+
+	end as [Description]
+
+	into DimSex
+from RawData
+
+	--select * from DimSex --Test line
+
+IF OBJECT_ID('dbo.DimEpistat') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.DimEpistat
+end
+
+select distinct
+epistat as ID
+,case
+	when epistat = 1 then 'Unfinished'
+	when epistat = 3 then 'Finished'
+	when epistat = 9 then 'Derived and unfinished'
+
+	end as [Description]
+
+	into DimEpistat
+from RawData
+
+	--select * from dimepistat --Test line
+
+IF OBJECT_ID('dbo.DimAdmincat') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.DimAdmincat
+end
+
+select distinct
+admincat as ID
+,case
+	when admincat = 01 then 'NHS patient'
+	when admincat = 02 then 'Private patient'
+	when admincat = 03 then 'Amenity patient'
+	when admincat = 04 then 'Category II patient'
+	when admincat = 98 then 'Not applicable'
+	when admincat = 99 then 'Not known'
+
+	end as [Description]
+
+	into DimAdmincat
+from RawData
+
+	--select * from DimAdmincat --Test line
+
+IF OBJECT_ID('dbo.DimAdmincatst') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.DimAdmincatst
+end
+
+select distinct
+admincatst as ID
+,case
+	when admincatst = 01 then 'NHS patient'
+	when admincatst = 02 then 'Private Patient'
+	when admincatst = 03 then 'Amenity patient'
+	when admincatst = 04 then 'Category II patient'
+	when admincatst = 98 then 'Not applicable'
+	when admincatst = 99 then 'Not known: a validation error'
+
+	end as [Description]
+
+	into DimAdmincatst
+from RawData
+
+	--select * from DimAdmincatst --Test line
+
+IF OBJECT_ID('dbo.dimcategory') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimcategory
+end
+
+select distinct
+category as ID
+,case
+	when category = 10 then 'NHS patient: not formally detained'
+	when category = 11 then 'NHS patient: formally detained under Part II of the Mental Health Act 1983'
+	when category = 12 then 'NHS patient: formally detained under Part III of the Mental Health Act 1983 or under other Acts'
+	when category = 13 then 'NHS patient: formally detained under part X, Mental Health Act 1983'
+	when category = 20 then 'Private patient: not formally detained'
+	when category = 21 then 'Private patient: formally detained under Part II of the Mental Health Act 1983'
+	when category = 22 then 'Private patient: formally detained under Part III of the Mental Health Act 1983 or under other Acts'
+	when category = 23 then '23 = Private patient: formally detained under part X, Mental health Act 1983'
+	when category = 30 then 'Amenity patient: not formally detained'
+	when category = 31 then 'Amenity patient: formally detained under Part II of the Mental Health Act 1983'
+	when category = 32 then 'Amenity patient: formally detained under Part III of the Mental Health Act 1983 or under other Acts'
+	when category = 33 then 'Amenity patient: formally detained under part X, Mental health Act 1983'
+
+	end as [Description]
+
+	into DimCategory
+from RawData
+
+	--select * from DimCategory --Test line
+
+IF OBJECT_ID('dbo.dimethnos') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimethnos
+end
+
+select distinct
+ethnos as ID
+,case
+	when ethnos = 'A' then 'British (White)'
+	when ethnos = 'K' then 'Bangladeshi (Asian or Asian British)'
+	when ethnos = 'N' then 'African (Black or Black British)'
+	when ethnos = 'H' then 'Indian (Asian or Asian British)'
+	when ethnos = 'D' then 'White and Black Caribbean (Mixed)'
+	when ethnos = 'F' then 'White and Asian (Mixed)'
+	when ethnos = 'L' then 'Any other Asian background'
+	when ethnos = '99' then 'Not known'
+	when ethnos = 'B' then 'British (White)'
+	else 'ERROR'
+	end as [Description]
+
+	into DimEthnos
+from RawData
+
+	--select * from DimEthnos --Test line
+
+IF OBJECT_ID('dbo.dimLeglcat') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimLeglcat
+end
+
+select distinct
+leglcat as ID
+,case
+	when leglcat = 1 then 'Informal'
+	when leglcat = 2 then 'Formally detained under the Mental Health Act, Section 2'
+	when leglcat = 3 then 'Formally detained under the Mental Health Act, Section 3'
+	when leglcat = 4 then 'Formally detained under the Mental Health Act, Section 4'
+	when leglcat = 5 then 'Formally detained under the Mental Health Act, Section 5(2)'
+	when leglcat = 6 then 'Formally detained under the Mental Health Act, Section 5(4)'
+	when leglcat = 7 then 'Formally detained under the Mental Health Act, Section 35 '
+	when leglcat = 8 then 'Formally detained under the Mental Health Act, Section 36 '
+	when leglcat = 9 then 'Formally detained under the Mental Health Act, Section 37 with Section 41 restrictions'
+	when leglcat = 10 then 'Formally detained under the Mental Health Act, Section 37 excluding Section 37(4)'
+	when leglcat = 11 then 'Formally detained under the Mental Health Act, Section 37(4)'
+	when leglcat = 12 then 'Formally detained under the Mental Health Act, Section 38'
+	when leglcat = 13 then 'Formally detained under the Mental Health Act, Section 44'
+	when leglcat = 14 then 'Formally detained under the Mental Health Act, Section 46'
+	when leglcat = 15 then 'Formally detained under the Mental Health Act, Section 47 with Section 49 restrictions'
+	when leglcat = 16 then 'Formally detained under the Mental Health Act, Section 47'
+	when leglcat = 17 then 'Formally detained under the Mental Health Act, Section 48 with Section 49 restrictions'
+	when leglcat = 18 then 'Formally detained under the Mental Health Act, Section 48'
+	when leglcat = 19 then 'Formally detained under the Mental Health Act, Section 135'
+	when leglcat = 20 then 'Formally detained under the Mental Health Act, Section 136'
+	when leglcat = 21 then 'Formally detained under the previous legislation (fifth schedule)'
+	when leglcat = 22 then 'Formally detained under Criminal Procedure (Insanity) Act 1964 as amended by the Criminal Procedures (Insanity and Unfitness to Plead) Act 1991'
+	when leglcat = 23 then 'Formally detained under other Acts'
+	when leglcat = 24 then 'Supervised discharge under the Mental Health (Patients in the Community) Act 1995'
+	when leglcat = 25 then 'Formally detained under the Mental Health Act, Section 45A'
+	when leglcat = 26 then 'Not applicable'
+	when leglcat = 27 then 'Not known'
+	else 'ERROR'
+	end as [Description]
+
+	into DimLeglcat
+from RawData
+
+	--select * from DimLeglcat --Test line
+
+IF OBJECT_ID('dbo.dimAdmimeth') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimadmimeth
+end
+
+select distinct
+admimeth as ID
+,case
+	when admimeth = '11' then 'Waiting List'
+	when admimeth = '28' then 'Other means'
+	when admimeth = '99' then 'Not known: a validation error'
+	when admimeth = '2A' then 'Accident and Emergency Department of another provider where the patient had not been admitted'
+	when admimeth = '12' then 'Booked'
+	when admimeth = '2B' then 'Transfer of an admitted patient from another Hospital Provider in an emergency'
+	when admimeth = '21' then 'Accident and emergency or dental casualty department of the Health Care Provider'
+	when admimeth = '13' then 'Planned'
+	when admimeth = '25' then 'Admission via Mental Health Crisis Resolution Team'
+	else 'ERROR'
+	end as [Description]
+
+	into Dimadmimeth
+from RawData
+
+	--select * from Dimadmimeth --Test line
+
+IF OBJECT_ID('dbo.dimAdmisorc') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimadmisorc
+end
+
+select distinct
+admisorc as ID
+, case 
+	when admisorc = 19 then 'The usual place of residence' 
+	when admisorc = 29 then 'Temporary place of residence' 
+	when admisorc = 30 then 'Repatriation from high security psychiatric hospital (1999-00 to 2006-07)' 
+	when admisorc = 37 then 'Penal establishment: court (1999-00 to 2006-07)' 
+	when admisorc = 38 then 'Penal establishment: police station (1999-00 to 2006-07)' 
+	when admisorc = 39 then 'Penal establishment, Court or Police Station / Police Custody Suite' 
+	when admisorc = 48 then 'High security psychiatric hospital, Scotland (1999-00 to 2006-07)' 
+	when admisorc = 49 then 'NHS other hospital provider: high security psychiatric accommodation in an NHS hospital provider (NHS trust or NHS Foundation Trust)' 
+	when admisorc = 50 then 'NHS other hospital provider: medium secure unit (1999-00 to 2006-07)' 
+	when admisorc = 51 then 'NHS other hospital provider: ward for general patients or the younger physically disabled or A&E department' 
+	when admisorc = 52 then 'NHS other hospital provider: ward for maternity patients or neonates' 
+	when admisorc = 53 then 'NHS other hospital provider: ward for patients who are mentally ill or have learning disabilities' 
+	when admisorc = 54 then 'NHS run Care Home' 
+	when admisorc = 65 then 'Local authority residential accommodation i.e. where care is provided' 
+	when admisorc = 66 then 'Local authority foster care, but not in residential accommodation i.e. where care is provided' 
+	when admisorc = 69 then 'Local authority home or care (1989-90 to 1995-96)' 
+	when admisorc = 79 then 'Babies born in or on the way to hospital' 
+	when admisorc = 85 then 'Non-NHS (other than Local Authority) run care home' 
+	when admisorc = 86 then 'Non-NHS (other than Local Authority) run nursing home' 
+	when admisorc = 87 then 'Non-NHS run hospital' 
+	when admisorc = 88 then 'non-NHS (other than Local Authority) run hospice' 
+	when admisorc = 89 then 'Non-NHS institution (1989-90 to 1995-96)' 
+	when admisorc = 98 then 'Not applicable' 
+	when admisorc = 99 then 'Not known' 
+	end Description
+	into DimAdmisorc
+from RawData
+
+	--select * from DimAdmisorc --Test line
+
+IF OBJECT_ID('dbo.dimClasspat') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimclasspat
+end
+
+select distinct
+classpat as ID
+,case
+	when classpat = 1 then 'Ordinary admission'
+	when classpat = 9 then 'Not known'
+	when classpat = 2 then 'Day case admission'
+	when classpat = 4 then 'Regular night attender'
+	when classpat = 3 then 'Regular day attender'
+	else 'ERROR'
+	end as [Description]
+
+	into DimClasspat
+from RawData
+
+	--select * from Dimclasspat --Test line
+
+IF OBJECT_ID('dbo.dimspellbgin') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimspellbgin
+end
+
+select distinct
+spellbgin as ID
+,case
+	when spellbgin = 0 then 'Not the first episode of the spell'
+	when spellbgin = 1 then 'First episode of spell that started in a previous year'
+	when spellbgin = 2 then 'First episode of spell that started in current year'
+	else 'ERROR'
+	end as [Description]
+
+	into DimSpellbgin
+from RawData
+
+	--select * from DimSpellbgin --Test line
+
+--endage, elecdur, elecdur_calc all covered below.
+--Tables incomplete as fields are part continuous (real numeric/date data) and part discrete codes. Only the discrete codes are included for the reference tables.
+--Tables not used in final readable table
+
+IF OBJECT_ID('dbo.dimendage') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimendage
+end
+
+select distinct
+endage as ID
+,case
+	when endage = 7004 then '29 to 90 days'
+	when endage = 7005 then '91 to 181 days'
+	when endage = 7006 then '182 to 272 days'
+	when endage = 7007 then '273 to 365 days'
+	else 'ERROR'
+	end as [Description]
+
+	into DimEndage
+from RawData
+where endage > 7000
+
+	--select * from Dimendage --Test line
+
+IF OBJECT_ID('dbo.dimelecdur') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimelecdur
+end
+
+select distinct
+elecdur as ID
+,case
+	when elecdur = 9998 then 'Not applicable'
+	when elecdur = 9999 then 'Not known'
+	else 'ERROR'
+	end as [Description]
+
+	into DimElecdur
+from RawData
+where elecdur > 7000
+
+	--select * from Dimelecdur --Test line
+
+IF OBJECT_ID('dbo.dimelecdur_calc') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.dimelecdur_calc
+end
+
+select distinct
+elecdur_calc as ID
+,case
+	when elecdur_calc = 9998 then 'Not applicable'
+	when elecdur_calc = 9999 then 'Not known'
+	else 'ERROR'
+	end as [Description]
+
+	into DimElecdur_calc
+from RawData
+where elecdur_calc > 7000
+
+	--select * from Dimelecdur_calc --Test line
+
+IF OBJECT_ID('dbo.ReadableData') IS NOT NULL
+BEGIN
+     DROP TABLE dbo.ReadableData
+end
+
+select		--columns commented out, aliased and reordered to improve readability.
+			--elecdur_calc has been changed such that the invalid entries are presented in the format of the reference table (reference table not joined because not all values are coded)
+	r.ID as [Episode ID]
+	,hesid as [Patient ID]
+	--,spell
+	,episode as [Episode]
+	--,admistart
+	--,elecdate as [Decision to Admit]
+	,	case									--Elecdur contains a numeric values, but 9998/9 refer to N/A and Unknown.
+		when elecdur_calc = 9998 then 'N/A'		--Because some values are codes and others are not, a table join to replace the code with the description is not sufficient. Therefore, a simple IF logic replaces the 9998/9s.
+		when elecdur_calc = 9999 then 'Unknown'
+		else elecdur_calc
+		end as [Waiting Time/days]
+	,epistart as [Start]
+	,epiend as [End]
+	,DimEpitype.Description as [Type]
+	,DimSex.Description as [Sex]
+	--,bedyear
+	--,epidur
+	--,DimEpistat.Description as epistat
+	--,DimSpellbgin.Description as spellbgin
+	--,activage
+	--,admiage
+	,DimAdmincat.Description as [Category on admission]
+	,DimAdmincatst.Description as [Category at ep start]
+	,upper(substring(DimCategory.Description,charindex(':',DimCategory.Description)+2,1))+substring(DimCategory.Description,charindex(':',DimCategory.Description)+3,len(DimCategory.Description)) as [Detained?] --first part of the fields removed, because it is a repetition of Category
+	,dob as [Date of Birth]
+	--,endage
+	,DimEthnos.Description as [Ethnicity]
+	,DimLeglcat.Description as [Legal Category]
+	--,lopatid
+	--,mydob
+	--,newnhsno
+	--,newnhsno_check
+	--,startage
+	,Dimadmimeth.Description as [Admission Method]
+	,DimAdmisorc.Description as [Source of Admission]
+	--,elecdur
+	,DimClasspat.Description as [Patient Classification]
+	--,diag_01
+into dbo.ReadableData		--new table "Readable Data" created and select query inputted there.
+from RawData r
+left join Dimadmimeth on r.admimeth = Dimadmimeth.ID
+left join DimAdmincat on r.admincat = DimAdmincat.ID
+left join DimAdmincatst on r.admincatst = DimAdmincatst.ID
+left join DimAdmisorc on r.admisorc = DimAdmisorc.ID
+left join DimCategory on r.category = DimCategory.ID
+left join DimClasspat on r.classpat = DimClasspat.ID
+left join DimEpistat on r.epistat = DimEpistat.ID
+left join DimEpitype on r.epitype = DimEpitype.ID
+left join DimEthnos on r.ethnos = DimEthnos.ID
+left join DimLeglcat on r.leglcat = DimLeglcat.ID
+left join DimSex on r.sex = DimSex.ID
+left join DimSpellbgin on r.spellbgin = DimSpellbgin.ID
+
+select * from ReadableData		--query directly from table just created
+order by cast([Episode ID]as int) asc --order the table as it was originally (by line ID no.)
